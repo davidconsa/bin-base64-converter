@@ -152,6 +152,15 @@
   footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--gray4)}
   footer a{color:var(--blue);text-decoration:none;font-weight:500}
   footer a:hover{text-decoration:underline}
+  /* JSON mode: select / extract */
+  .prop-select-wrap{padding:16px 18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);margin-bottom:16px;box-shadow:var(--sh-sm)}
+  .prop-select-wrap label{font-size:11px;font-weight:600;color:var(--gray4);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:8px}
+  .prop-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .prop-row select{flex:1;min-width:180px;padding:9px 14px;border:1px solid var(--border);border-radius:8px;font-family:var(--font);font-size:14px;color:var(--gray1);background:var(--surface);cursor:pointer;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e8e93' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+  .prop-row select:focus{border-color:var(--blue)}
+  .prop-row select:disabled{opacity:.4;cursor:not-allowed}
+  .json-info{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+  @media(max-width:600px){.json-info{grid-template-columns:repeat(2,1fr)}}
   @media(max-width:480px){.badge{display:none};header{padding:28px 0 20px}}
 </style>
 </head>
@@ -183,6 +192,10 @@
       <button class="seg-btn" id="seg-dec" onclick="setMode('decode')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Base64 → Binario
+      </button>
+      <button class="seg-btn" id="seg-json" onclick="setMode('json')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        JSON → Base64
       </button>
     </div>
   </div>
@@ -279,6 +292,56 @@
     </div>
   </div>
 
+  <!-- ═══ JSON → BASE64 ═══ -->
+  <div id="mode-json" style="display:none">
+    <label class="dz" id="dropzone-json" for="file-input-json">
+      <input type="file" id="file-input-json" accept=".json" onchange="handleJsonFile(this.files[0])"/>
+      <div class="dz-ic">📋</div>
+      <div class="dz-t">Selecciona o arrastra un archivo JSON</div>
+      <div class="dz-s"><span>Examinar .json</span> · Archivo único</div>
+    </label>
+
+    <!-- File info -->
+    <div id="json-loaded" style="display:none">
+      <div class="file-list-wrap" style="margin-bottom:16px">
+        <div class="fl-head">
+          <div class="fl-title"><div class="ci ci-blue">{ }</div><span id="json-filename">—</span></div>
+          <span class="fl-count" id="json-prop-count">0 props</span>
+        </div>
+      </div>
+
+      <!-- Property selector -->
+      <div class="prop-select-wrap">
+        <label>Propiedad con valor Base64</label>
+        <div class="prop-row">
+          <select id="json-prop-select" onchange="onJsonPropChange()" disabled>
+            <option value="">— Seleccionar propiedad —</option>
+          </select>
+          <button class="btn btn-ghost" onclick="loadJsonProps()" title="Recargar propiedades del JSON" style="padding:9px 14px">↻</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="json-info" id="json-stats">
+        <div class="sc"><div class="sl">Valor (chars)</div><div class="sv" id="j-chars">—</div></div>
+        <div class="sc"><div class="sl">Bytes decod.</div><div class="sv sv-blue" id="j-bytes">—</div></div>
+        <div class="sc"><div class="sl">Base64 válido</div><div class="sv" id="j-valid">—</div></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="json-dl-b64" onclick="downloadJsonB64()" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Descargar Base64 (.txt)
+        </button>
+        <button class="btn btn-secondary" id="json-dl-bin" onclick="downloadJsonBin()" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Descargar Binario (.bin)
+        </button>
+        <button class="btn btn-ghost" onclick="clearJson()">Limpiar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- History -->
   <div id="hist-wrap" style="display:none">
     <div class="history-card">
@@ -308,8 +371,10 @@
     mode = m;
     document.getElementById('mode-encode').style.display = m==='encode' ? 'block' : 'none';
     document.getElementById('mode-decode').style.display = m==='decode' ? 'block' : 'none';
+    document.getElementById('mode-json').style.display   = m==='json'   ? 'block' : 'none';
     document.getElementById('seg-enc').classList.toggle('active', m==='encode');
     document.getElementById('seg-dec').classList.toggle('active', m==='decode');
+    document.getElementById('seg-json').classList.toggle('active', m==='json');
     hideSt();
   }
 
@@ -593,6 +658,142 @@
     onB64In(); hideSt();
   }
 
+  // ─── Drag & Drop (JSON) ─────────────────────────────────────
+  const dzj = document.getElementById('dropzone-json');
+  dzj.addEventListener('dragover',  e => { e.preventDefault(); dzj.classList.add('over'); });
+  dzj.addEventListener('dragleave', () => dzj.classList.remove('over'));
+  dzj.addEventListener('drop', e => {
+    e.preventDefault(); dzj.classList.remove('over');
+    if (e.dataTransfer.files.length) handleJsonFile(e.dataTransfer.files[0]);
+  });
+
+  // ─── JSON → Base64 ──────────────────────────────────────────
+  let jsonData    = null;   // parsed JSON object
+  let jsonFname   = '';     // original file name
+  let jsonPropVal = '';     // value of selected property
+
+  function handleJsonFile(file) {
+    if (!file || !file.name.endsWith('.json')) {
+      showSt('error', '✗ Solo se admiten archivos .json'); return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        jsonData = JSON.parse(e.target.result);
+        jsonFname = file.name;
+        loadJsonProps();
+        showSt('success', `✓ "${file.name}" cargado — ${fmt(e.target.result.length)}`);
+      } catch {
+        jsonData = null;
+        showSt('error', '✗ El archivo no contiene JSON válido');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function loadJsonProps() {
+    if (!jsonData || typeof jsonData !== 'object' || Array.isArray(jsonData)) {
+      showSt('error', '✗ El JSON debe ser un objeto con propiedades');
+      return;
+    }
+
+    document.getElementById('json-loaded').style.display = 'block';
+    document.getElementById('json-filename').textContent = jsonFname;
+
+    const props = Object.keys(jsonData);
+    document.getElementById('json-prop-count').textContent = `${props.length} props`;
+
+    const sel = document.getElementById('json-prop-select');
+    sel.innerHTML = '<option value="">— Seleccionar propiedad —</option>';
+    props.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p;
+      const val = String(jsonData[p]);
+      opt.textContent = `${p} (${fmt(val.length)})`;
+      sel.appendChild(opt);
+    });
+    sel.disabled = false;
+    sel.value = '';
+
+    // Reset stats / buttons
+    jsonPropVal = '';
+    document.getElementById('j-chars').textContent  = '—';
+    document.getElementById('j-bytes').textContent  = '—';
+    const vEl = document.getElementById('j-valid');
+    vEl.textContent = '—'; vEl.className = 'sv';
+    document.getElementById('json-dl-b64').disabled = true;
+    document.getElementById('json-dl-bin').disabled = true;
+  }
+
+  function onJsonPropChange() {
+    const sel = document.getElementById('json-prop-select');
+    const propName = sel.value;
+    if (!propName || !jsonData || !(propName in jsonData)) {
+      jsonPropVal = '';
+      document.getElementById('json-dl-b64').disabled = true;
+      document.getElementById('json-dl-bin').disabled = true;
+      return;
+    }
+
+    const raw = String(jsonData[propName]);
+    jsonPropVal = raw;
+    document.getElementById('j-chars').textContent = raw.length.toLocaleString();
+
+    const vEl = document.getElementById('j-valid');
+    if (isB64(raw)) {
+      const bytes = Math.floor(raw.replace(/\s/g,'').length * 0.75);
+      document.getElementById('j-bytes').textContent = fmt(bytes);
+      vEl.textContent = 'Válido'; vEl.className = 'sv sv-green';
+      document.getElementById('json-dl-b64').disabled = false;
+      document.getElementById('json-dl-bin').disabled = false;
+    } else {
+      document.getElementById('j-bytes').textContent = '—';
+      vEl.textContent = 'Inválido'; vEl.className = 'sv sv-red';
+      document.getElementById('json-dl-b64').disabled = true;
+      document.getElementById('json-dl-bin').disabled = true;
+    }
+  }
+
+  function downloadJsonB64() {
+    if (!jsonPropVal) return;
+    const baseName = jsonFname.replace(/\.json$/i, '');
+    const propName = document.getElementById('json-prop-select').value;
+    triggerDownload(
+      new Blob([jsonPropVal], { type: 'text/plain;charset=utf-8' }),
+      `${baseName}-${propName}-base64.txt`
+    );
+    showSt('success', `✓ Base64 descargado como ${baseName}-${propName}-base64.txt`);
+    addHist('json', `${jsonFname} / ${propName} (base64)`, jsonPropVal.length);
+  }
+
+  function downloadJsonBin() {
+    if (!jsonPropVal) return;
+    try {
+      const clean = jsonPropVal.replace(/\s/g,'');
+      const bin = atob(clean);
+      const bytes = new Uint8Array(bin.length);
+      for (let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+      const baseName = jsonFname.replace(/\.json$/i, '');
+      const propName = document.getElementById('json-prop-select').value;
+      triggerDownload(
+        new Blob([bytes], { type: 'application/octet-stream' }),
+        `${baseName}-${propName}.bin`
+      );
+      showSt('success', `✓ Binario descargado como ${baseName}-${propName}.bin — ${fmt(bytes.length)}`);
+      addHist('json', `${jsonFname} / ${propName} (bin)`, bytes.length);
+    } catch {
+      showSt('error', '✗ Error al decodificar Base64. Verifica que el valor esté completo.');
+    }
+  }
+
+  function clearJson() {
+    jsonData = null; jsonFname = ''; jsonPropVal = '';
+    document.getElementById('json-loaded').style.display = 'none';
+    document.getElementById('file-input-json').value = '';
+    document.getElementById('json-prop-select').disabled = true;
+    hideSt();
+  }
+
   async function pasteClip() {
     try {
       document.getElementById('b64-in').value = await navigator.clipboard.readText();
@@ -643,7 +844,7 @@
     document.getElementById('h-count').textContent = hist.length;
     document.getElementById('hist-list').innerHTML = hist.map(h => `
       <div class="hrow">
-        <span class="hbadge ${h.type==='enc'?'he':'hd'}">${h.type==='enc'?'BIN→B64':'B64→BIN'}</span>
+        <span class="hbadge ${h.type==='enc'?'he':h.type==='dec'?'hd':'he'}">${h.type==='enc'?'BIN→B64':h.type==='dec'?'B64→BIN':'JSON→B64'}</span>
         <span class="hname">${h.name}</span>
         <span class="hsz">${fmt(h.bytes)}</span>
         <span class="htm">${h.time.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span>
